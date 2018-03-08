@@ -1,0 +1,157 @@
+---
+title: "SF Trees"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+Load data
+```{r, echo = FALSE, include=FALSE, warning=FALSE}
+library(ggplot2)
+library(ggmap)
+
+knitr::opts_knit$set(root.dir = "~/Projects/SF_Trees")
+#load sf trees database and create a table of tree species
+trees <- read.csv(file="~/Projects/SF_Trees/san_francisco_street_trees.csv")
+tr_species <- as.data.frame(table(trees$species))
+tr_species <- tr_species[order(-tr_species$Freq),] 
+```
+
+
+Missing values
+```{r, echo = FALSE}
+sum(is.na(trees))/(ncol(trees)*nrow(trees))
+```
+There is 1.5% missing values in this data set; this isn't a lot and I will ignore them.
+
+Next, build a plot of a number of trees by tree species, leave species name blank; we just want to understand where to focus and what to ignore. In this particular case, looks like if we can focus attention at species that are represented by say more than ~500 trees. We will use this as a cut-off for a more detailed analysis and take a look.
+```{r, echo = FALSE, warning=FALSE}
+ggplot(tr_species, aes(x=reorder(Var1, -Freq), y = Freq)) + geom_bar(stat="identity") + theme(
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + labs(x = "Individual species", y = "Frequency", title = "Tree species in San Francisco") 
+
+```
+
+
+Now let's take a look at the species where tree count is over the desired threshold:
+
+```{r, echo = FALSE, warning=FALSE}
+threshold = 500
+tr_species_select = tr_species[tr_species[, 'Freq'] > threshold, ]
+ggplot(tr_species_select, aes(x=reorder(Var1, Freq), y = Freq)) + geom_bar(stat="identity") + labs(x = "Individual species", y = "Frequency", title = "Tree species in San Francisco > threshold") + theme(axis.text.y = element_text(size = 5, hjust = 1)) + coord_flip()
+
+```
+
+Two things catch my eye: the first row says 'Tree(s)' and close to the middle there is a 'species' with no name counting about 1,700 trees. These are trees where no species name has been assigned.
+
+Still the purpose here is to play with visualization tools available, so let's focus on the top 20 trees and build some colored pretty plots:
+
+```{r, echo = FALSE}
+# take top 20 of tree species
+top_20 <- head(tr_species, 20)
+#rownames(top_20) <- 1:nrow(top_20)
+```
+
+```{r, echo = FALSE, warning=FALSE}
+#create a bar plot - then flip to create a horizontal plot
+ggplot(top_20, aes(x=reorder(Var1, Freq), y=Freq, color=Var1)) +
+  geom_bar(stat="identity", fill="white") + coord_flip() + theme(legend.position="none") + labs(y = "Number of trees", title = "Tree species in San Francisco") + theme(axis.title.y = element_blank())
+```
+
+Say we have examined the top species and decided now to take a closer look at the top 6 species, excluding non-named species. 
+
+Let's build graphs with specific tree species, each tree species marked by color
+
+In addition, build density trees for:
+
+*  all 6 species
+*  separate graph for each species
+
+```{r, echo = FALSE, include=FALSE, warning=FALSE}
+library(maptools)
+
+#build map of SF trees
+#map <- readRDS("../input/sf_map_copyright_openstreetmap_contributors.rds")
+#map<-get_map(location="sanfrancisco",zoom=12,source="osm")
+
+mapTheme <- function(base_size = 12) {
+  theme(
+    text = element_text( color = "black"),
+    plot.title = element_text(size = 18,colour = "black"),
+    plot.subtitle=element_text(face="italic"),
+    plot.caption=element_text(hjust=0),
+    axis.ticks = element_blank(),
+    panel.background = element_blank(),
+    panel.grid.major = element_line("grey80", size = 0.1),
+    strip.text = element_text(size=12),
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(fill = "grey80", color = "white"),
+    plot.background = element_blank(),
+    legend.background = element_blank(),
+    legend.title = element_text(colour = "black", face = "italic"),
+    legend.text = element_text(colour = "black", face = "italic"))
+}
+
+#Download polygon shapefile from github
+#URL <- "https://github.com/simonkassel/Visualizing_SF_home_prices_R/raw/master/Data/SF_neighborhoods.zip"
+#download.file(URL, "SF_neighborhoods.zip")
+#unzip("SF_neighborhoods.zip")
+neighb <- readShapePoly("SF_neighborhoods")
+bbox <- neighb@bbox
+
+# use alternative bbox instead of the build above
+#bbox <- matrix(array(c(-122.5, 37.7, -122.4, 37.8)), nrow = 2, byrow = FALSE)
+
+
+sf_bbox <- c(left = bbox[1, 1] - .01, bottom = bbox[2, 1] - .005, 
+             right = bbox[1, 2] + .01, top = bbox[2, 2] + .005)
+             
+basemap <- get_stamenmap(
+  bbox = sf_bbox,
+  zoom = 13,
+  maptype = "toner-lite")
+
+# this map shows san francisco base map only  
+#ggmap(basemap) + mapTheme() + 
+  labs(title="San Francisco basemap")
+
+
+#limit data set to top 6 named tree species
+top_6 <- head(tr_species, 7)
+top_6 <- top_6[top_6$Var1 != "Tree(s) ::", ]
+trees_to_map <- trees[trees$species %in% top_6$Var1, ]
+write.csv(trees_to_map, './Temp/trees_to_map.csv')
+write.csv(top_6, './Temp/top_6.csv')
+```
+
+```{r, echo = FALSE, warning=FALSE}
+# Let's map the trees of the top 6 species
+ggmap(basemap) + 
+  geom_point(data = trees_to_map, aes(x = longitude, y = latitude, color = species), size = .25, alpha = 0.6)
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+# let's build density map
+contours <- stat_density2d(
+aes(x = longitude, y = latitude, fill = ..level.., alpha=..level..),
+size = 0.1, data = trees_to_map, n=200,
+geom = "polygon")
+
+ggmap(basemap, extent='device', legend="topleft") + contours +
+scale_alpha_continuous(range=c(0.25,0.4), guide='none') + scale_fill_gradient(low = "azure3", high = "darkblue", limits=c(0, 800)) +
+ggtitle('Top 6 tree species density in San Francisco') 
+#+ scale_fill_gradient('Species\nDensity')
+
+
+ggmap(basemap, extent='device') + contours +
+scale_alpha_continuous(range=c(0.25,0.4), guide='none') +
+scale_fill_gradient('Species\nDensity', low = "azure3", high = "darkblue", limits=c(0, 800)) +
+facet_wrap(~species) +
+ggtitle('Top 6 tree species density in San Francisco')
+```
+

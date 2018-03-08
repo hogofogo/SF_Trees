@@ -1,0 +1,13 @@
+name: SF_Trees
+title: SF_Trees
+username:
+account: hogofogo
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 292114
+bundleId: 1250125
+url: https://hogofogo.shinyapps.io/SF_Trees/
+when: 1520043224.99345
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .Rapp.history|README.md|san_francisco_street_trees.csv|SF_neighborhoods.dbf|SF_neighborhoods.prj|SF_neighborhoods.shp|SF_neighborhoods.shx|SF_neighborhoods.zip|SF_trees_V1.html|SF_trees_V1.Rmd|SF_trees.html|SF_trees.Rmd|top_6.csv|trees_to_map.csv|__MACOSX/._SF_neighborhoods.dbf|__MACOSX/._SF_neighborhoods.prj|__MACOSX/._SF_neighborhoods.shp|__MACOSX/._SF_neighborhoods.shx|SF_neighborhoods/SF_neighborhoods.dbf|SF_neighborhoods/SF_neighborhoods.prj|SF_neighborhoods/SF_neighborhoods.shp|SF_neighborhoods/SF_neighborhoods.shx|Temp/top_5.csv
